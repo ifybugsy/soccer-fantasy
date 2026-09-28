@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { userService } from "@/lib/db/services/user.service"
 import { transactionService } from "@/lib/db/services/transaction.service"
+import { paymentService } from "@/lib/db/services/payment.service"
 import { paystackService } from "@/lib/paystack/paystack.service"
 
 export async function POST(request: NextRequest) {
@@ -12,51 +12,33 @@ export async function POST(request: NextRequest) {
     }
 
     const verificationResult = await paystackService.verifyPayment(reference)
+    const transaction = await transactionService.getTransactionById(transactionId)
+
+    if (!transaction || transaction.providerReference !== verificationResult.reference || transaction.type !== "deposit") {
+      return NextResponse.json({ error: "Invalid payment" }, { status: 400 })
+    }
 
     if (verificationResult.status !== "success") {
-      // Update transaction as failed
-      await transactionService.updateTransactionStatus(transactionId, "failed")
-
-      return NextResponse.json(
-        {
-          success: false,
-          transactionId,
-          status: "failed",
-          message: "Payment verification failed",
-        },
-        { status: 400 },
-      )
+      if (transaction.status === "pending") await transactionService.updateTransactionStatus(transactionId, "failed")
+      return NextResponse.json({ success: false, transactionId, status: "failed", message: "Payment verification failed" }, { status: 400 })
     }
 
-    // Get the transaction from database
-    const transaction = await transactionService.getTransactionById(transactionId)
-    if (!transaction) {
-      return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
+    if (verificationResult.currency !== transaction.currency || verificationResult.amountMinor !== Math.round(transaction.amount * 100)) {
+      return NextResponse.json({ error: "Invalid payment" }, { status: 400 })
     }
 
-    // Update transaction as completed
-    await transactionService.updateTransactionStatus(transactionId, "completed")
-
-    // Update user balance
-    const user = await userService.getUserById(transaction.userId)
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    try {
+      const result = await paymentService.completePaystackDeposit({
+        reference: verificationResult.reference,
+        amountMinor: verificationResult.amountMinor,
+        currency: verificationResult.currency,
+        transactionId,
+      })
+      return NextResponse.json({ success: true, transactionId, amount: transaction.amount, currency: transaction.currency, status: "completed", alreadyProcessed: !result.completed, reference: verificationResult.reference, message: "Payment verified successfully" })
+    } catch (error) {
+      if (error instanceof Error && ["PAYMENT_DETAILS_MISMATCH", "PAYMENT_NOT_PROCESSABLE", "PAYMENT_NOT_FOUND"].includes(error.message)) return NextResponse.json({ error: "Invalid payment" }, { status: 400 })
+      throw error
     }
-
-    const updatedUser = await userService.updateUser(transaction.userId, {
-      balance: user.balance + transaction.amount,
-    })
-
-    return NextResponse.json({
-      success: true,
-      transactionId,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      status: "completed",
-      newBalance: updatedUser?.balance,
-      reference: verificationResult.reference,
-      message: "Payment verified and balance updated successfully",
-    })
   } catch (error) {
     console.error("[v0] Paystack verification error:", error)
     return NextResponse.json({ error: error instanceof Error ? error.message : "Verification failed" }, { status: 500 })

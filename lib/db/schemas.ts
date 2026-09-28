@@ -98,6 +98,9 @@ export interface Transaction {
   currency: string
   status: "pending" | "completed" | "failed"
   description: string
+  providerReference?: string
+  completedAt?: Date
+  updatedAt?: Date
   createdAt: Date
 }
 

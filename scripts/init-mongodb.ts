@@ -32,8 +32,9 @@ async function initializeDatabase() {
     await db.collection("matches").createIndex({ leagueId: 1 })
     await db.collection("matches").createIndex({ status: 1 })
 
-    await db.collection("transactions").createIndex({ userId: 1 })
-    await db.collection("transactions").createIndex({ createdAt: -1 })
+  await db.collection("transactions").createIndex({ userId: 1 })
+  await db.collection("transactions").createIndex({ providerReference: 1 }, { unique: true, sparse: true })
+  await db.collection("transactions").createIndex({ createdAt: -1 })
 
     console.log("[v0] Database initialized successfully")
   } catch (error) {

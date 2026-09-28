@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       currency,
     })
 
+    await transactionService.setProviderReference(transactionId, paystackResponse.reference)
+
     return NextResponse.json({
       success: true,
       transactionId,

@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { userService } from "@/lib/db/services/user.service"
-import { transactionService } from "@/lib/db/services/transaction.service"
+import { paymentService } from "@/lib/db/services/payment.service"
 import { paystackService } from "@/lib/paystack/paystack.service"
 
 export async function POST(request: NextRequest) {
@@ -9,48 +8,48 @@ export async function POST(request: NextRequest) {
     const body = await request.text()
 
     if (!signature) {
-      return NextResponse.json({ error: "Missing webhook signature" }, { status: 400 })
+      console.error("[v0] Paystack webhook missing signature")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const isValidSignature = paystackService.verifyWebhookSignature(JSON.parse(body), signature)
-
-    if (!isValidSignature) {
+    if (!paystackService.verifyWebhookSignature(body, signature)) {
       console.error("[v0] Invalid Paystack webhook signature")
-      return NextResponse.json({ error: "Invalid signature" }, { status: 403 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const event = JSON.parse(body)
-
-    if (event.event !== "charge.success") {
-      // Only process successful charges
-      return NextResponse.json({ success: true })
+    let event: { event?: string; data?: { reference?: string; amount?: number; currency?: string; status?: string; metadata?: { transactionId?: string } } }
+    try {
+      event = JSON.parse(body)
+    } catch {
+      return NextResponse.json({ error: "Invalid webhook" }, { status: 400 })
     }
 
-    const { reference, amount, metadata } = event.data
+    if (event.event !== "charge.success") return NextResponse.json({ success: true })
 
-    if (!metadata || !metadata.transactionId || !metadata.userId) {
-      console.error("[v0] Missing metadata in webhook")
-      return NextResponse.json({ error: "Invalid webhook data" }, { status: 400 })
+    const data = event.data
+    const amountMinor = data?.amount
+    if (!data?.reference || typeof amountMinor !== "number" || !Number.isInteger(amountMinor) || amountMinor < 0 || data.currency !== "NGN" || data.status !== "success") {
+      console.error("[v0] Invalid Paystack payment data")
+      return NextResponse.json({ error: "Invalid webhook" }, { status: 400 })
     }
 
-    const transactionId = metadata.transactionId
-    const userId = metadata.userId
-
-    // Update transaction status
-    await transactionService.updateTransactionStatus(transactionId, "completed")
-
-    // Update user balance
-    const user = await userService.getUserById(userId)
-    if (user) {
-      const amountInRegularUnits = amount / 100
-      await userService.updateUser(userId, {
-        balance: user.balance + amountInRegularUnits,
+    try {
+      const result = await paymentService.completePaystackDeposit({
+        reference: data.reference,
+        amountMinor,
+        currency: data.currency,
+        transactionId: data.metadata?.transactionId,
       })
+      console.log(`[v0] Paystack payment ${data.reference} ${result.completed ? "completed" : "already processed"}`)
+      return NextResponse.json({ success: true, message: result.completed ? "Webhook processed" : "Already processed" })
+    } catch (error) {
+      const code = error instanceof Error ? error.message : ""
+      if (code === "PAYMENT_NOT_FOUND" || code === "PAYMENT_DETAILS_MISMATCH" || code === "PAYMENT_NOT_PROCESSABLE") {
+        console.error(`[v0] Paystack payment rejected: ${code}`)
+        return NextResponse.json({ error: "Invalid payment" }, { status: 400 })
+      }
+      throw error
     }
-
-    console.log(`[v0] Webhook processed: Transaction ${transactionId} marked as completed`)
-
-    return NextResponse.json({ success: true, message: "Webhook processed" })
   } catch (error) {
     console.error("[v0] Paystack webhook error:", error)
     return NextResponse.json(

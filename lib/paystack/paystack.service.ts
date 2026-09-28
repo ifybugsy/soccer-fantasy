@@ -67,7 +67,9 @@ export const paystackService = {
       return {
         success: true,
         status: data.data.status,
-        amount: data.data.amount / 100, // Convert from kobo back to regular amount
+        amount: data.data.amount / 100,
+        amountMinor: data.data.amount,
+        currency: data.data.currency,
         email: data.data.customer.email,
         reference: data.data.reference,
         paidAt: data.data.paid_at,
@@ -80,17 +82,12 @@ export const paystackService = {
   },
 
   // Verify webhook signature
-  verifyWebhookSignature(body: any, signature: string): boolean {
+  verifyWebhookSignature(rawBody: string, signature: string): boolean {
     const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY
+    if (!paystackSecretKey || !/^[a-f0-9]{128}$/i.test(signature)) return false
 
-    if (!paystackSecretKey) {
-      console.error("[v0] PAYSTACK_SECRET_KEY is not configured")
-      return false
-    }
-
-    const hash = crypto.createHmac("sha512", paystackSecretKey).update(JSON.stringify(body)).digest("hex")
-
-    return hash === signature
+    const expected = crypto.createHmac("sha512", paystackSecretKey).update(rawBody, "utf8").digest("hex")
+    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"))
   },
 
   // Create a transfer recipient (for withdrawals)

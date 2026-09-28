@@ -24,6 +24,15 @@ export const transactionService = {
     return db.collection("transactions").findOne({ id: transactionId })
   },
 
+  async setProviderReference(transactionId: string, providerReference: string) {
+    const { db } = await connectToDatabase()
+    return db.collection("transactions").findOneAndUpdate(
+      { id: transactionId, type: "deposit", status: "pending" },
+      { $set: { providerReference, updatedAt: new Date() } },
+      { returnDocument: "after" },
+    )
+  },
+
   async updateTransactionStatus(id: string, status: "pending" | "completed" | "failed"): Promise<Transaction | null> {
     const { db } = await connectToDatabase()
 
