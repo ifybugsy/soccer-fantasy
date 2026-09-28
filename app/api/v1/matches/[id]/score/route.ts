@@ -1,12 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { matchService } from "@/lib/db/services/match.service"
+import { requireAdmin } from "@/lib/admin/admin-auth-server"
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const adminToken = request.headers.get("x-admin-token")
-    if (!adminToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const auth = requireAdmin(request)
+    if ("response" in auth) return auth.response
 
     const { id } = await params
     const { homeScore, awayScore, status } = await request.json()

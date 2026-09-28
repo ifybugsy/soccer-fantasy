@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { adminService } from "@/lib/db/services/admin.service"
+import { requireAdmin } from "@/lib/admin/admin-auth-server"
 
 export async function GET(request: NextRequest) {
   try {
-    const adminToken = request.headers.get("x-admin-token")
-    if (!adminToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const auth = requireAdmin(request)
+    if ("response" in auth) return auth.response
 
     const analytics = await adminService.getAnalytics()
 

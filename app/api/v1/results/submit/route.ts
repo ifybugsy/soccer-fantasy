@@ -1,8 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/db/mongodb"
+import { requireAdmin } from "@/lib/admin/admin-auth-server"
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = requireAdmin(request)
+    if ("response" in auth) return auth.response
+
     const formData = await request.formData()
 
     const username = formData.get("username") as string

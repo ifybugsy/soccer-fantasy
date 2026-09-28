@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { playerService } from "@/lib/db/services/player.service"
+import { requireAdmin } from "@/lib/admin/admin-auth-server"
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,10 +26,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const adminToken = request.headers.get("x-admin-token")
-    if (!adminToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const auth = requireAdmin(request)
+    if ("response" in auth) return auth.response
 
     const { name, team, position, price } = await request.json()
 
