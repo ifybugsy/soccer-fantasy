@@ -1,12 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { userService } from "@/lib/db/services/user.service"
 import { transactionService } from "@/lib/db/services/transaction.service"
+import { authErrorResponse, requireAuthenticatedUser } from "@/lib/auth/user-auth"
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, amount, currency, bankAccount } = await request.json()
+    const { amount, currency, bankAccount } = await request.json()
+    const user = await requireAuthenticatedUser(request)
+    const userId = user.id
 
-    if (!userId || !amount || !currency) {
+    if (!amount || !currency) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -14,12 +17,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 })
     }
 
-    const user = await userService.getUserById(userId)
-    if (!user) {
+    const accountUser = await userService.getUserById(userId)
+    if (!accountUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    if (user.balance < amount) {
+    if (accountUser.balance < amount) {
       return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
     }
 
@@ -38,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Deduct balance (pending)
     await userService.updateUser(userId, {
-      balance: user.balance - amount,
+      balance: accountUser.balance - amount,
     })
 
     // In production, process via payment provider's payout system
@@ -57,6 +60,10 @@ export async function POST(request: NextRequest) {
       message: "Withdrawal request submitted. Processing will complete within 1-2 business days",
     })
   } catch (error) {
+    const authError = authErrorResponse(error)
+    if (error instanceof Error && error.name === "UserAuthError") {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
     console.error("[v0] Withdrawal error:", error)
     return NextResponse.json({ error: "Withdrawal processing error" }, { status: 500 })
   }

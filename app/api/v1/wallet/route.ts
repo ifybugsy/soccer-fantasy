@@ -1,18 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { userService } from "@/lib/db/services/user.service"
 import { transactionService } from "@/lib/db/services/transaction.service"
+import { authErrorResponse, requireAuthenticatedUser } from "@/lib/auth/user-auth"
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get("x-user-id")
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 })
-    }
-
-    const user = await userService.getUserById(userId)
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
+    const user = await requireAuthenticatedUser(request)
+    const userId = user.id
 
     const transactions = await transactionService.getUserTransactions(userId)
 
@@ -24,6 +18,10 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
+    const authError = authErrorResponse(error)
+    if (error instanceof Error && error.name === "UserAuthError") {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
     console.error("[v0] Get wallet error:", error)
     return NextResponse.json({ error: "Failed to fetch wallet" }, { status: 500 })
   }
@@ -31,9 +29,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, amount, type } = await request.json()
+    const { amount, type } = await request.json()
+    const authenticatedUser = await requireAuthenticatedUser(request)
+    const userId = authenticatedUser.id
 
-    if (!userId || !amount || !type) {
+    if (!amount || !type) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -58,6 +58,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: transaction }, { status: 201 })
   } catch (error) {
+    const authError = authErrorResponse(error)
+    if (error instanceof Error && error.name === "UserAuthError") {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
     console.error("[v0] Wallet transaction error:", error)
     return NextResponse.json({ error: "Transaction failed" }, { status: 500 })
   }

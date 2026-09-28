@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { userService } from "@/lib/db/services/user.service"
 import { adminService } from "@/lib/db/services/admin.service"
+import jwt from "jsonwebtoken"
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,6 +69,14 @@ export async function POST(request: NextRequest) {
       // Silently fail - don't block login if logging fails
     }
 
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) {
+      console.error("[v0] JWT_SECRET is not configured")
+      return NextResponse.json({ success: false, error: "Authentication unavailable" }, { status: 500 })
+    }
+
+    const token = jwt.sign({ userId: user.id, role: user.role, email: user.email }, jwtSecret, { expiresIn: "7d" })
+
     return NextResponse.json(
       {
         success: true,
@@ -75,7 +84,7 @@ export async function POST(request: NextRequest) {
         username: user.username,
         email: user.email,
         emailVerified: user.emailVerified,
-        token: user.id,
+        token,
       },
       { status: 200 },
     )

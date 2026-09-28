@@ -1,13 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { leagueService } from "@/lib/db/services/league.service"
 import { userService } from "@/lib/db/services/user.service"
+import { authErrorResponse, requireAuthenticatedUser } from "@/lib/auth/user-auth"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const { userId, username } = await request.json()
+    const { username } = await request.json()
+    const authenticatedUser = await requireAuthenticatedUser(request)
+    const userId = authenticatedUser.id
 
-    if (!userId || !username) {
+    if (!username) {
       return NextResponse.json({ error: "User ID and username required" }, { status: 400 })
     }
 
@@ -55,6 +58,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       message: "Successfully joined league",
     })
   } catch (error) {
+    const authError = authErrorResponse(error)
+    if (error instanceof Error && error.name === "UserAuthError") {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
     console.error("[v0] Join league error:", error)
     return NextResponse.json({ error: "Failed to join league" }, { status: 500 })
   }
