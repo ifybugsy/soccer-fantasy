@@ -10,8 +10,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
     const { homeScore, awayScore, status } = await request.json()
 
-    if (homeScore === undefined || awayScore === undefined) {
-      return NextResponse.json({ error: "Scores required" }, { status: 400 })
+    if (
+      typeof homeScore !== "number" ||
+      !Number.isInteger(homeScore) ||
+      homeScore < 0 ||
+      typeof awayScore !== "number" ||
+      !Number.isInteger(awayScore) ||
+      awayScore < 0 ||
+      (status !== undefined && status !== "live" && status !== "completed")
+    ) {
+      return NextResponse.json({ error: "Invalid match score or status" }, { status: 400 })
     }
 
     const match = await matchService.updateMatchScore(id, homeScore, awayScore, status || "live")

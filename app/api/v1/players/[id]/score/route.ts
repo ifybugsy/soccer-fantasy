@@ -10,8 +10,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
     const { score } = await request.json()
 
-    if (score === undefined) {
-      return NextResponse.json({ error: "Score required" }, { status: 400 })
+    if (typeof score !== "number" || !Number.isFinite(score) || score < 0) {
+      return NextResponse.json({ error: "Score must be a finite non-negative number" }, { status: 400 })
     }
 
     const player = await playerService.updatePlayerScore(id, score)
