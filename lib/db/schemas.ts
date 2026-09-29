@@ -105,6 +105,39 @@ export interface Transaction {
   createdAt: Date
 }
 
+export type TournamentStatus = "DRAFT" | "UPCOMING" | "REGISTRATION_OPEN" | "ACTIVE" | "COMPLETED" | "CANCELLED"
+
+export interface Tournament {
+  _id?: string
+  id: string
+  name: string
+  description?: string
+  entryFee: number
+  maxParticipants?: number
+  minParticipants?: number
+  registrationOpenAt: Date
+  registrationCloseAt: Date
+  startAt: Date
+  endAt: Date
+  status: TournamentStatus
+  rules?: string
+  payoutConfig: { rank: number; type: "percentage" | "fixed"; value: number }[]
+  participantCount: number
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface TournamentEntry {
+  _id?: string
+  id: string
+  tournamentId: string
+  userId: string
+  pesId: string
+  status: "active" | "withdrawn" | "refunded"
+  joinedAt: Date
+  transactionId: string
+}
+
 export interface EventLog {
   _id?: string
   id: string
