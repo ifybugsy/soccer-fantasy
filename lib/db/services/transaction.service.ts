@@ -11,23 +11,23 @@ export const transactionService = {
       createdAt: new Date(),
     }
 
-    const result = await db.collection("transactions").insertOne(newTransaction as any, { session })
+    const result = await db.collection<Transaction>("transactions").insertOne(newTransaction as any, { session })
     return { ...newTransaction, _id: result.insertedId }
   },
 
   async getUserTransactions(userId: string, limit = 50): Promise<Transaction[]> {
     const { db } = await connectToDatabase()
-    return db.collection("transactions").find({ userId }).sort({ createdAt: -1 }).limit(limit).toArray()
+    return db.collection<Transaction>("transactions").find({ userId }).sort({ createdAt: -1 }).limit(limit).toArray()
   },
 
   async getTransactionById(transactionId: string): Promise<Transaction | null> {
     const { db } = await connectToDatabase()
-    return db.collection("transactions").findOne({ id: transactionId })
+    return db.collection<Transaction>("transactions").findOne({ id: transactionId })
   },
 
   async setProviderReference(transactionId: string, providerReference: string) {
     const { db } = await connectToDatabase()
-    return db.collection("transactions").findOneAndUpdate(
+    return db.collection<Transaction>("transactions").findOneAndUpdate(
       { id: transactionId, type: "deposit", status: "pending" },
       { $set: { providerReference, updatedAt: new Date() } },
       { returnDocument: "after" },
@@ -38,9 +38,9 @@ export const transactionService = {
     const { db } = await connectToDatabase()
 
     const result = await db
-      .collection("transactions")
+      .collection<Transaction>("transactions")
       .findOneAndUpdate({ id }, { $set: { status } }, { returnDocument: "after" })
 
-    return result.value
+    return result
   },
 }

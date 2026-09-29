@@ -1,4 +1,4 @@
-import WebSocket from "ws"
+import WebSocket, { WebSocketServer } from "ws"
 import { verifyToken } from "../config/jwt"
 import { TransactionService } from "../services/transaction.service"
 import { WalletService } from "../services/wallet.service"
@@ -9,13 +9,13 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 export class WebSocketManager {
-  private wss: WebSocket.Server
+  private wss: WebSocketServer
   private clients: Map<string, AuthenticatedWebSocket> = new Map()
   private transactionService: TransactionService
   private walletService: WalletService
 
   constructor(server: any) {
-    this.wss = new WebSocket.Server({ server })
+    this.wss = new WebSocketServer({ server })
     this.transactionService = new TransactionService()
     this.walletService = new WalletService()
 

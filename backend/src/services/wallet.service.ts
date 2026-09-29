@@ -18,7 +18,7 @@ export class WalletService {
       { returnDocument: "after" },
     )
 
-    return result.value?.wallet.balance || 0
+    return result?.wallet.balance || 0
   }
 
   async getBalance(userId: string): Promise<number> {

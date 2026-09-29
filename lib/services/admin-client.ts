@@ -1,6 +1,6 @@
 import { getAdminToken } from "@/lib/admin/admin-session"
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T> {
   success: boolean
   data?: T
   error?: string
@@ -104,23 +104,23 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+  async get<T = Record<string, any>>(endpoint: string, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
     return this.executeRequest<T>(endpoint, { ...config, method: "GET" })
   }
 
-  async post<T>(endpoint: string, body?: any, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+  async post<T = Record<string, any>>(endpoint: string, body?: any, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
     return this.executeRequest<T>(endpoint, { ...config, method: "POST", body })
   }
 
-  async put<T>(endpoint: string, body?: any, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+  async put<T = Record<string, any>>(endpoint: string, body?: any, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
     return this.executeRequest<T>(endpoint, { ...config, method: "PUT", body })
   }
 
-  async delete<T>(endpoint: string, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+  async delete<T = Record<string, any>>(endpoint: string, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
     return this.executeRequest<T>(endpoint, { ...config, method: "DELETE" })
   }
 
-  async patch<T>(endpoint: string, body?: any, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+  async patch<T = Record<string, any>>(endpoint: string, body?: any, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
     return this.executeRequest<T>(endpoint, { ...config, method: "PATCH", body })
   }
 }

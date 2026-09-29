@@ -11,39 +11,39 @@ export const playerService = {
       updatedAt: new Date(),
     }
 
-    const result = await db.collection("players").insertOne(newPlayer as any)
+    const result = await db.collection<Player>("players").insertOne(newPlayer as any)
     return { ...newPlayer, _id: result.insertedId }
   },
 
   async getPlayerById(id: string): Promise<Player | null> {
     const { db } = await connectToDatabase()
-    return db.collection("players").findOne({ id })
+    return db.collection<Player>("players").findOne({ id })
   },
 
   async getPlayersByTeam(team: string): Promise<Player[]> {
     const { db } = await connectToDatabase()
-    return db.collection("players").find({ team }).toArray()
+    return db.collection<Player>("players").find({ team }).toArray()
   },
 
   async getAllPlayers(limit = 100): Promise<Player[]> {
     const { db } = await connectToDatabase()
-    return db.collection("players").find({}).limit(limit).toArray()
+    return db.collection<Player>("players").find({}).limit(limit).toArray()
   },
 
   async updatePlayerPrice(id: string, newPrice: number): Promise<Player | null> {
     const { db } = await connectToDatabase()
 
     const result = await db
-      .collection("players")
+      .collection<Player>("players")
       .findOneAndUpdate({ id }, { $set: { price: newPrice, updatedAt: new Date() } }, { returnDocument: "after" })
 
-    return result.value
+    return result
   },
 
   async updatePlayerScore(id: string, score: number): Promise<Player | null> {
     const { db } = await connectToDatabase()
 
-    const result = await db.collection("players").findOneAndUpdate(
+    const result = await db.collection<Player>("players").findOneAndUpdate(
       { id },
       {
         $set: { totalScore: score, updatedAt: new Date() },
@@ -52,7 +52,7 @@ export const playerService = {
       { returnDocument: "after" },
     )
 
-    return result.value
+    return result
   },
 
   async bulkUpdatePlayers(updates: Array<{ id: string; score: number }>) {
@@ -68,6 +68,6 @@ export const playerService = {
       },
     }))
 
-    return db.collection("players").bulkWrite(operations)
+    return db.collection<Player>("players").bulkWrite(operations)
   },
 }

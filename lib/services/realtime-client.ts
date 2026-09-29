@@ -43,7 +43,7 @@ export class RealtimeClient {
           // Send authentication
           this.send({
             type: "auth",
-            token,
+            data: { token },
           })
 
           // Start heartbeat

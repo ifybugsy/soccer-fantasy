@@ -1,7 +1,15 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { adminClient, type AdminStats, type AdminUser } from "@/lib/services/admin-client"
+import { apiClient } from "@/lib/services/admin-client"
+
+type AdminUser = Record<string, any>
+type AdminStats = Record<string, any>
+const adminClient = {
+  getUsers: (skip: number, limit: number) => apiClient.get<{ users: AdminUser[]; pagination: { skip: number; limit: number; total: number } }>(`/admin/users?skip=${skip}&limit=${limit}`),
+  getDashboardStats: () => apiClient.get<AdminStats>("/admin/analytics"),
+  updateUser: (id: string, action: string, data?: any) => apiClient.patch(`/admin/users/${id}/${action}`, data),
+}
 
 export function useAdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -22,7 +30,7 @@ export function useAdminDashboard() {
           throw new Error(response.error || "Failed to load users")
         }
 
-        setUsers(response.data || [])
+        setUsers((response.data as any)?.users || [])
         if (response.data?.pagination) {
           setPagination(response.data.pagination)
         }

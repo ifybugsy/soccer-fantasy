@@ -13,7 +13,7 @@ export function useRealtimeSync(channel: string | null, onMessage?: (event: Sync
   const [isConnected, setIsConnected] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const connect = useCallback(() => {
     if (!channel) return

@@ -39,14 +39,14 @@ export class TransactionService {
       { _id: transactionId },
       {
         $set: {
-          status,
+          status: status as Transaction["status"],
           updatedAt: new Date(),
         },
       },
       { returnDocument: "after" },
     )
 
-    return result.value || null
+    return result || null
   }
 
   async getUserTransactions(userId: string, limit = 50): Promise<Transaction[]> {

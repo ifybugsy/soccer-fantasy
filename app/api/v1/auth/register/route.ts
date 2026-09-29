@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, username, password, eFootballCode, country, dateOfBirth } = body
 
-    const missingFields = []
+    const missingFields: string[] = []
     if (!email) missingFields.push("email")
     if (!username) missingFields.push("username")
     if (!password) missingFields.push("password")

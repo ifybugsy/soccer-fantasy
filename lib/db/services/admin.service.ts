@@ -9,18 +9,18 @@ export const adminService = {
       .find({}, { projection: { password: 0 } })
       .skip(skip)
       .limit(limit)
-      .toArray()
+      .toArray() as unknown as Promise<User[]>
   },
 
   async getUserCount(): Promise<number> {
     const { db } = await connectToDatabase()
-    return db.collection("users").countDocuments()
+    return db.collection<import("../schemas").User>("users").countDocuments()
   },
 
   async updateUserBalance(userId: string, amount: number, reason: string): Promise<User | null> {
     const { db } = await connectToDatabase()
 
-    const result = await db.collection("users").findOneAndUpdate(
+    const result = await db.collection<import("../schemas").User>("users").findOneAndUpdate(
       { id: userId },
       {
         $inc: { balance: amount },
@@ -29,7 +29,7 @@ export const adminService = {
       { returnDocument: "after" },
     )
 
-    if (result.value) {
+    if (result) {
       // Log the balance adjustment
       await adminService.logEvent({
         id: Math.random().toString(36).substr(2, 9),
@@ -40,7 +40,7 @@ export const adminService = {
       })
     }
 
-    return result.value
+    return result
   },
 
   async suspendUser(userId: string): Promise<User | null> {
@@ -53,7 +53,7 @@ export const adminService = {
         { $set: { verified: false, updatedAt: new Date() } },
         { returnDocument: "after" },
       )
-      .then((r) => r.value)
+      .then((r) => r as User | null)
   },
 
   async unsuspendUser(userId: string): Promise<User | null> {
@@ -66,7 +66,7 @@ export const adminService = {
         { $set: { verified: true, updatedAt: new Date() } },
         { returnDocument: "after" },
       )
-      .then((r) => r.value)
+      .then((r) => r as User | null)
   },
 
   async logEvent(event: Omit<EventLog, "_id">): Promise<void> {
@@ -77,13 +77,13 @@ export const adminService = {
   async getEventLogs(userId?: string, limit = 100): Promise<EventLog[]> {
     const { db } = await connectToDatabase()
     const query = userId ? { userId } : {}
-    return db.collection("event_logs").find(query).sort({ timestamp: -1 }).limit(limit).toArray()
+    return db.collection("event_logs").find(query).sort({ timestamp: -1 }).limit(limit).toArray() as unknown as Promise<EventLog[]>
   },
 
   async getAnalytics() {
     const { db } = await connectToDatabase()
 
-    const totalUsers = await db.collection("users").countDocuments()
+    const totalUsers = await db.collection<import("../schemas").User>("users").countDocuments()
     const totalLeagues = await db.collection("leagues").countDocuments()
     const totalTransactions = await db.collection("transactions").countDocuments()
     const completedTransactions = await db.collection("transactions").countDocuments({ status: "completed" })

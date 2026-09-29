@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         name: awayTeamName,
         score: awayScore,
       },
-      goalScorers: goalScorers.filter((g) => g.playerName && g.matchMinute),
+      goalScorers: (goalScorers as Array<{ playerName?: string; matchMinute?: number }>).filter((g) => g.playerName && g.matchMinute),
       screenshotUrl: matchScreenshotUrl || null,
       status: "pending",
       submittedAt: new Date(),
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const leaguesCollection = db.collection("leagues")
     const userLeagues = await leaguesCollection.find({ members: username, type: leagueType }).toArray()
 
-    const updatedLeagueIds = []
+    const updatedLeagueIds: string[] = []
     for (const league of userLeagues) {
       await leaguesCollection.updateOne(
         { _id: league._id },
