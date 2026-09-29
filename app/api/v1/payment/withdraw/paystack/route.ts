@@ -10,11 +10,11 @@ export async function POST(request: NextRequest) {
     const user = await requireAuthenticatedUser(request)
     const userId = user.id
 
-    if (!amount || !bankCode || !accountNumber || !accountName) {
+    if (typeof amount !== "number" || !bankCode || !accountNumber || !accountName) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    if (amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 })
     }
 
@@ -27,13 +27,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    if (accountUser.balance < amount) {
+    const reservedUser = await userService.adjustBalanceIfSufficient(userId, amount)
+    if (!reservedUser) {
       return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
     }
 
     const recipientResponse = await paystackService.createTransferRecipient(accountNumber, bankCode, accountName)
 
     if (!recipientResponse.success) {
+      await userService.restoreBalance(userId, amount)
       return NextResponse.json({ error: "Failed to create transfer recipient" }, { status: 400 })
     }
 
@@ -44,13 +46,10 @@ export async function POST(request: NextRequest) {
     )
 
     if (!transferResponse.success) {
+      await userService.restoreBalance(userId, amount)
       return NextResponse.json({ error: "Failed to initiate transfer" }, { status: 400 })
     }
 
-    // Deduct amount from user balance immediately
-    await userService.updateUser(userId, {
-      balance: accountUser.balance - amount,
-    })
 
     // Create transaction record
     const transactionId = Math.random().toString(36).substr(2, 9).toUpperCase()

@@ -1,6 +1,7 @@
 import { connectToDatabase } from "../mongodb"
 import type { User } from "../schemas"
 import bcrypt from "bcryptjs"
+import type { ClientSession } from "mongodb"
 
 export const userService = {
   async createUser(user: Omit<User, "_id" | "createdAt" | "updatedAt">) {
@@ -33,6 +34,34 @@ export const userService = {
     const result = await db
       .collection("users")
       .findOneAndUpdate({ id }, { $set: { ...updates, updatedAt: new Date() } }, { returnDocument: "after" })
+    return result.value
+  },
+
+  async adjustBalanceIfSufficient(
+    id: string,
+    amount: number,
+    session?: ClientSession,
+  ): Promise<User | null> {
+    if (!Number.isFinite(amount) || amount <= 0) return null
+
+    const { db } = await connectToDatabase()
+    const result = await db.collection("users").findOneAndUpdate(
+      { id, balance: { $gte: amount } },
+      { $inc: { balance: -amount }, $set: { updatedAt: new Date() } },
+      { returnDocument: "after", session },
+    )
+    return result.value
+  },
+
+  async restoreBalance(id: string, amount: number, session?: ClientSession): Promise<User | null> {
+    if (!Number.isFinite(amount) || amount <= 0) return null
+
+    const { db } = await connectToDatabase()
+    const result = await db.collection("users").findOneAndUpdate(
+      { id },
+      { $inc: { balance: amount }, $set: { updatedAt: new Date() } },
+      { returnDocument: "after", session },
+    )
     return result.value
   },
 

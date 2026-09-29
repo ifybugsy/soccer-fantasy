@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { leagueService } from "@/lib/db/services/league.service"
-import { userService } from "@/lib/db/services/user.service"
 import { authErrorResponse, requireAuthenticatedUser } from "@/lib/auth/user-auth"
+import { randomUUID } from "node:crypto"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -28,10 +28,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Already a member of this league" }, { status: 400 })
     }
 
-    // Deduct entry fee from user balance
-    const user = await userService.getUserById(userId)
-    if (!user || user.balance < league.entryFee) {
-      return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
+    if (!Number.isFinite(league.entryFee) || league.entryFee <= 0) {
+      return NextResponse.json({ error: "Invalid league entry fee" }, { status: 400 })
     }
 
     const newMember = {
@@ -42,16 +40,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       rank: league.currentMembers + 1,
     }
 
-    const success = await leagueService.addMemberToLeague(id, newMember)
-
-    if (!success) {
+    try {
+      await leagueService.joinLeague(id, newMember, league.entryFee, league.maxMembers, userId, randomUUID())
+    } catch (error) {
+      if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
+        return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
+      }
       return NextResponse.json({ error: "Failed to join league" }, { status: 400 })
     }
-
-    // Deduct entry fee
-    await userService.updateUser(userId, {
-      balance: user.balance - league.entryFee,
-    })
 
     return NextResponse.json({
       success: true,

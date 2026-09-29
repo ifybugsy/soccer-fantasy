@@ -1,8 +1,9 @@
 import { connectToDatabase } from "../mongodb"
 import type { Transaction } from "../schemas"
+import type { ClientSession } from "mongodb"
 
 export const transactionService = {
-  async createTransaction(transaction: Omit<Transaction, "_id" | "createdAt">) {
+  async createTransaction(transaction: Omit<Transaction, "_id" | "createdAt">, session?: ClientSession) {
     const { db } = await connectToDatabase()
 
     const newTransaction = {
@@ -10,7 +11,7 @@ export const transactionService = {
       createdAt: new Date(),
     }
 
-    const result = await db.collection("transactions").insertOne(newTransaction as any)
+    const result = await db.collection("transactions").insertOne(newTransaction as any, { session })
     return { ...newTransaction, _id: result.insertedId }
   },
 

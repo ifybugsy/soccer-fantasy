@@ -9,11 +9,11 @@ export async function POST(request: NextRequest) {
     const user = await requireAuthenticatedUser(request)
     const userId = user.id
 
-    if (!amount || !currency) {
+    if (!currency || typeof amount !== "number") {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    if (amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 })
     }
 
@@ -22,11 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    if (accountUser.balance < amount) {
-      return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
-    }
-
-    const transactionId = Math.random().toString(36).substr(2, 9).toUpperCase()
+    const transactionId = crypto.randomUUID()
 
     // Create pending transaction
     const transaction = await transactionService.createTransaction({
@@ -39,10 +35,11 @@ export async function POST(request: NextRequest) {
       description: `Withdrawal to bank account ending in ${bankAccount?.slice(-4)}`,
     })
 
-    // Deduct balance (pending)
-    await userService.updateUser(userId, {
-      balance: accountUser.balance - amount,
-    })
+    const reservedUser = await userService.adjustBalanceIfSufficient(userId, amount)
+    if (!reservedUser) {
+      await transactionService.updateTransactionStatus(transactionId, "failed")
+      return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
+    }
 
     // In production, process via payment provider's payout system
     // For now, simulate processing
