@@ -66,9 +66,13 @@
     "ws": "latest"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
+    "@types/ws": "^8.18.2",
     "postcss": "^8.5",
     "tailwindcss": "4.1.17",
     "typescript": "^5"
